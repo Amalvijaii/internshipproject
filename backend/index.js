@@ -1,9 +1,10 @@
 const express = require('express');
 const app = express();
 const PORT = 5000;
+const cors=require('cors');
+
 
 require('./connection'); // DB connection
-const cors=require('cors');
 const projectModel = require('./models/projectData'); // Project model
 const taskModel = require('./models/taskData');       // Task model
 const teamMemberModel = require('./models/teamMember');   //Team member model
@@ -29,8 +30,9 @@ app.get('/projects', async (req, res) => {
 app.post('/projects', async (req, res) => {
     try {
         const newProject = new projectModel(req.body);
-        await newProject.save();
-        res.send("Project added successfully");
+        const savedProject=await newProject.save();
+        res.json(savedProject);//Return full saved projects
+        // res.send("Project added successfully");
     } catch (error) {
         console.error("Error adding project:", error);
         res.status(500).send("Internal Server Error");
@@ -76,8 +78,9 @@ app.get('/tasks', async (req, res) => {
 app.post('/tasks', async (req, res) => {
     try {
         const newTask = new taskModel(req.body);
-        await newTask.save();
-        res.send("Task added successfully");
+        const savedTask=await newTask.save();
+        res.json(savedTask);
+        //res.send("Task added successfully");
     } catch (error) {
         console.error("Error adding task:", error);
         res.status(500).send("Internal Server Error");

@@ -1,57 +1,66 @@
-// src/components/SimulatedLogin.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Box,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
-  Typography,
+  Box, Typography, TextField, Button, MenuItem, Select, InputLabel, FormControl
 } from '@mui/material';
-
-
-const users = [
-  { name: 'Juliet', role: 'Admin' },
-  { name: 'Bob', role: 'Team Member' },
-  { name: 'Charlie', role: 'Team Member' },
-];
+import axios from 'axios';
 
 const SimulatedLogin = ({ onLogin }) => {
-  const [selectedUser, setSelectedUser] = useState('');
+  const [users, setUsers] = useState([]);
+  const [selectedEmail, setSelectedEmail] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
 
-  const handleChange = (event) => {
-    const user = JSON.parse(event.target.value);
-    setSelectedUser(user.name);
-    onLogin(user); // send selected user to App.jsx
+  // 🔁 Load users from backend
+  useEffect(() => {
+    axios.get('http://localhost:5000/teammembers')
+      .then((res) => setUsers(res.data))
+      .catch((err) => console.error('Failed to fetch users:', err));
+  }, []);
+
+  const handleLogin = () => {
+    const user = users.find((u) => u.email === selectedEmail);
+    if (user) {
+      setCurrentUser(user);
+      onLogin(user); // Pass user to parent
+    } else {
+      alert('User not found.');
+    }
   };
 
   return (
-    <Box
-      sx={{
-        backgroundColor: '#f5f5f5',
-        padding: 2,
-        marginBottom: 4,
-        borderRadius: 2,
-      }}
-    >
+    <Box sx={{ my: 4, maxWidth: 400, mx: 'auto', textAlign: 'center' }}>
       <Typography variant="h6" gutterBottom>
-        🔐 Simulated Login
+        👤 Simulated Login
       </Typography>
 
-      <FormControl fullWidth>
-        <InputLabel>Select User</InputLabel>
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel>Select Email</InputLabel>
         <Select
-          label="Select User"
-          value={selectedUser}
-          onChange={handleChange}
+          value={selectedEmail}
+          label="Select Email"
+          onChange={(e) => setSelectedEmail(e.target.value)}
         >
-          {users.map((user, idx) => (
-            <MenuItem key={idx} value={JSON.stringify(user)}>
-              {user.name} ({user.role})
+          {users.map((user) => (
+            <MenuItem key={user._id} value={user.email}>
+              {user.name} ({user.email})
             </MenuItem>
           ))}
         </Select>
       </FormControl>
+
+      <Button
+        variant="contained"
+        fullWidth
+        disabled={!selectedEmail}
+        onClick={handleLogin}
+      >
+        Login
+      </Button>
+
+      {currentUser && (
+        <Typography mt={2}>
+          Logged in as: {currentUser.name} ({currentUser.role})
+        </Typography>
+      )}
     </Box>
   );
 };

@@ -21,7 +21,6 @@ function App({ toggleTheme }) {
       ? 'url(https://www.transparenttextures.com/patterns/white-wall-3.png)'
       : 'url(https://www.transparenttextures.com/patterns/dark-mosaic.png)';
 
-  // 🧠 If user is NOT logged in, only show login screen
   if (!user) {
     return (
       <Box
@@ -37,7 +36,6 @@ function App({ toggleTheme }) {
     );
   }
 
-  // ✅ If logged in, show full app layout
   return (
     <Box
       sx={{

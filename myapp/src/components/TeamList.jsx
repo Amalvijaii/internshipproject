@@ -1,5 +1,5 @@
 // src/components/TeamList.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -13,34 +13,69 @@ import {
   InputLabel,
   FormControl,
 } from '@mui/material';
+import axios from 'axios';
 
 const TeamList = () => {
-  const [team, setTeam] = useState([
-    { id: 1, name: 'Juliet', role: 'Admin' },
-    { id: 2, name: 'Bob', role: 'Team Member' },
-    { id: 3, name: 'Charlie', role: 'Team Member' },
-  ]);
-
+  const [team, setTeam] = useState([]);
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [role, setRole] = useState('Team Member');
 
+  useEffect(() => {
+    fetchTeam();
+  }, []);
+
+  const fetchTeam = () => {
+    axios
+      .get('http://localhost:5000/teammembers')
+      .then((res) => setTeam(res.data))
+      .catch((err) => console.error('Error fetching team:', err));
+  };
+
   const handleAddMember = () => {
-    if (!name.trim()) return;
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+
+    if (!trimmedName || !trimmedEmail) return;
+
+    // 🔍 Check for existing member
+    const exists = team.some(
+      (member) =>
+        member.name.toLowerCase() === trimmedName.toLowerCase() ||
+        member.email.toLowerCase() === trimmedEmail
+    );
+
+    if (exists) {
+      alert('Member with same name or email already exists!');
+      return;
+    }
 
     const newMember = {
-      id: Date.now(),
-      name: name.trim(),
+      name: capitalize(trimmedName),
+      email: trimmedEmail,
       role,
     };
 
-    setTeam([...team, newMember]);
-    setName('');
-    setRole('Team Member');
+    axios
+      .post('http://localhost:5000/teammembers', newMember)
+      .then(() => {
+        fetchTeam();
+        setName('');
+        setEmail('');
+        setRole('Team Member');
+      })
+      .catch((err) => console.error('Error adding member:', err));
   };
 
   const handleDelete = (id) => {
-    setTeam(team.filter((member) => member.id !== id));
+    axios
+      .delete(`http://localhost:5000/teammembers/${id}`)
+      .then(() => setTeam((prev) => prev.filter((member) => member._id !== id)))
+      .catch((err) => console.error('Error deleting member:', err));
   };
+
+  const capitalize = (str) =>
+    str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
 
   return (
     <Box sx={{ my: 4 }}>
@@ -48,12 +83,18 @@ const TeamList = () => {
         👥 Team Members
       </Typography>
 
-      {/* Add Member Form */}
+      {/* ➕ Add Team Member Form */}
       <Stack direction="row" spacing={2} mb={2} flexWrap="wrap">
         <TextField
           label="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
+        />
+
+        <TextField
+          label="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <FormControl sx={{ minWidth: 150 }}>
@@ -73,10 +114,10 @@ const TeamList = () => {
         </Button>
       </Stack>
 
-      {/* Team List */}
+      {/* 📄 Team Member List */}
       <Stack spacing={2}>
         {team.map((member) => (
-          <Card key={member.id}>
+          <Card key={member._id}>
             <CardContent
               sx={{
                 display: 'flex',
@@ -86,12 +127,13 @@ const TeamList = () => {
             >
               <Box>
                 <Typography variant="subtitle1">{member.name}</Typography>
+                <Typography variant="body2">Email: {member.email}</Typography>
                 <Typography variant="body2">Role: {member.role}</Typography>
               </Box>
               <Button
                 variant="contained"
                 color="error"
-                onClick={() => handleDelete(member.id)}
+                onClick={() => handleDelete(member._id)}
               >
                 Remove
               </Button>
