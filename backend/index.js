@@ -1,115 +1,120 @@
 const express = require('express');
 const app = express();
 const PORT = 5000;
-const cors=require('cors');
-
+const cors = require('cors');
 
 require('./connection'); // DB connection
-const projectModel = require('./models/projectData'); // Project model
-const taskModel = require('./models/taskData');       // Task model
-const teamMemberModel = require('./models/teamMember');   //Team member model
+const projectModel = require('./models/projectData');     // Project model
+const taskModel = require('./models/taskData');           // Task model
+const teamMemberModel = require('./models/teamMember');   // Team member model
 
 app.use(express.json());
 app.use(cors());
 
-
-// ---------------------- PROJECT APIs ---------------------- //
+/* ---------------------- PROJECT APIs ---------------------- */
 
 // ✅ GET all projects
 app.get('/projects', async (req, res) => {
-    try {
-        const data = await projectModel.find();
-        res.send(data);
-    } catch (error) {
-        console.error("Error fetching projects:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    const data = await projectModel.find();
+    res.send(data);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ✅ POST add new project
+// ✅ POST new project
 app.post('/projects', async (req, res) => {
-    try {
-        const newProject = new projectModel(req.body);
-        const savedProject=await newProject.save();
-        res.json(savedProject);//Return full saved projects
-        // res.send("Project added successfully");
-    } catch (error) {
-        console.error("Error adding project:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    const newProject = new projectModel(req.body);
+    const savedProject = await newProject.save();
+    res.json(savedProject);
+  } catch (error) {
+    console.error("Error adding project:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ✅ PUT update a project by ID
+// ✅ PUT update project
 app.put('/projects/:id', async (req, res) => {
-    try {
-        await projectModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
-        res.send("Project updated successfully");
-    } catch (error) {
-        console.error("Error updating project:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    await projectModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.send("Project updated successfully");
+  } catch (error) {
+    console.error("Error updating project:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ✅ DELETE a project by ID
+// ✅ DELETE project
 app.delete('/projects/:id', async (req, res) => {
-    try {
-        await projectModel.findByIdAndDelete(req.params.id);
-        res.send("Project deleted successfully");
-    } catch (error) {
-        console.error("Error deleting project:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    await projectModel.findByIdAndDelete(req.params.id);
+    res.send("Project deleted successfully");
+  } catch (error) {
+    console.error("Error deleting project:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ---------------------- TASK APIs ---------------------- //
+/* ---------------------- TASK APIs ---------------------- */
 
-// ✅ GET all tasks
+// ✅ GET all tasks or filter by assignee
 app.get('/tasks', async (req, res) => {
-    try {
-        const tasks = await taskModel.find();
-        res.send(tasks);
-    } catch (error) {
-        console.error("Error fetching tasks:", error);
-        res.status(500).send("Internal Server Error");
+  try {
+    const { assignee } = req.query;
+
+    let tasks;
+    if (assignee) {
+      tasks = await taskModel.find({ assignee });
+    } else {
+      tasks = await taskModel.find();
     }
+
+    res.send(tasks);
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ✅ POST add new task
+// ✅ POST new task
 app.post('/tasks', async (req, res) => {
-    try {
-        const newTask = new taskModel(req.body);
-        const savedTask=await newTask.save();
-        res.json(savedTask);
-        //res.send("Task added successfully");
-    } catch (error) {
-        console.error("Error adding task:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    const newTask = new taskModel(req.body);
+    const savedTask = await newTask.save();
+    res.json(savedTask);
+  } catch (error) {
+    console.error("Error adding task:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ✅ PUT update task by ID
+// ✅ PUT update task
 app.put('/tasks/:id', async (req, res) => {
-    try {
-        await taskModel.findByIdAndUpdate(req.params.id, req.body);
-        res.send("Task updated successfully");
-    } catch (error) {
-        console.error("Error updating task:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    await taskModel.findByIdAndUpdate(req.params.id, req.body);
+    res.send("Task updated successfully");
+  } catch (error) {
+    console.error("Error updating task:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ✅ DELETE task by ID
+// ✅ DELETE task
 app.delete('/tasks/:id', async (req, res) => {
-    try {
-        await taskModel.findByIdAndDelete(req.params.id);
-        res.send("Task deleted successfully");
-    } catch (error) {
-        console.error("Error deleting task:", error);
-        res.status(500).send("Internal Server Error");
-    }
+  try {
+    await taskModel.findByIdAndDelete(req.params.id);
+    res.send("Task deleted successfully");
+  } catch (error) {
+    console.error("Error deleting task:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-// ---------------------- TEAM MEMBER APIs ---------------------- //
+/* ---------------------- TEAM MEMBER APIs ---------------------- */
+
 // ✅ GET all team members
 app.get('/teammembers', async (req, res) => {
   try {
@@ -121,7 +126,7 @@ app.get('/teammembers', async (req, res) => {
   }
 });
 
-// ✅ POST a new team member
+// ✅ POST new team member
 app.post('/teammembers', async (req, res) => {
   try {
     const newMember = new teamMemberModel(req.body);
@@ -132,7 +137,8 @@ app.post('/teammembers', async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
-//  ✅ PUT update a team member by ID  
+
+// ✅ PUT update team member
 app.put('/teammembers/:id', async (req, res) => {
   try {
     const updatedMember = await teamMemberModel.findByIdAndUpdate(req.params.id, req.body, { new: true });
@@ -143,7 +149,7 @@ app.put('/teammembers/:id', async (req, res) => {
   }
 });
 
-// ✅ DELETE a team member by ID
+// ✅ DELETE team member
 app.delete('/teammembers/:id', async (req, res) => {
   try {
     await teamMemberModel.findByIdAndDelete(req.params.id);

@@ -1,130 +1,346 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Box, Typography, TextField, Button, Stack, Card, CardContent,
-  FormControl, InputLabel, Select, MenuItem
-} from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import {
+  Typography,
+  Box,
+  TextField,
+  MenuItem,
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  CardActions,
+  Checkbox,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+} from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 
-const TaskList = () => {
+const TaskList = ({ user }) => {
   const [tasks, setTasks] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [team, setTeam] = useState([]);
-  const [taskName, setTaskName] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [project, setProject] = useState('');
-  const [status, setStatus] = useState('Pending');
-  const [dueDate, setDueDate] = useState('');
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [newTask, setNewTask] = useState({
+    taskName: '',
+    assignedTo: '',
+    projectId: '',
+    dueDate: '',
+    status: 'To do',
+  });
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState(null);
+
+  const fetchTasks = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/tasks');
+      let allTasks = response.data;
+
+      if (user.role === 'Team Member') {
+        allTasks = allTasks.filter(
+          (task) =>
+            task.assignedTo?.toLowerCase().trim() ===
+            user.name?.toLowerCase().trim()
+        );
+      }
+
+      setTasks(allTasks);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/projects');
+      setProjects(res.data);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    }
+  };
+
+  const fetchTeamMembers = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/teammembers');
+      setTeamMembers(res.data);
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+    }
+  };
 
   useEffect(() => {
     fetchTasks();
-    fetchProjects();
-    fetchTeam();
-  }, []);
+    if (user.role === 'Admin') {
+      fetchProjects();
+      fetchTeamMembers();
+    }
+  }, [user]);
 
-  const fetchTasks = () => {
-    axios.get('http://localhost:5000/tasks')
-      .then(res => setTasks(res.data))
-      .catch(err => console.error('Error fetching tasks:', err));
+  const handleToggleComplete = async (taskId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'Completed' ? 'To do' : 'Completed';
+      await axios.put(`http://localhost:5000/tasks/${taskId}`, {
+        status: newStatus,
+      });
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
   };
 
-  const fetchProjects = () => {
-    axios.get('http://localhost:5000/projects')
-      .then(res => setProjects(res.data))
-      .catch(err => console.error('Error fetching projects:', err));
+  const handleDelete = async (taskId) => {
+    try {
+      await axios.delete(`http://localhost:5000/tasks/${taskId}`);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
-  const fetchTeam = () => {
-    axios.get('http://localhost:5000/teammembers')
-      .then(res => setTeam(res.data))
-      .catch(err => console.error('Error fetching team:', err));
+  const handleAddTask = async () => {
+    const { taskName, assignedTo, projectId, dueDate, status } = newTask;
+    if (!taskName || !assignedTo || !projectId || !dueDate || !status) return;
+
+    try {
+      await axios.post('http://localhost:5000/tasks', {
+        taskName,
+        assignedTo,
+        projectId,
+        dueDate,
+        status,
+      });
+      setNewTask({
+        taskName: '',
+        assignedTo: '',
+        projectId: '',
+        dueDate: '',
+        status: 'To do',
+      });
+      fetchTasks();
+    } catch (error) {
+      console.error('Error adding task:', error);
+    }
   };
 
-  const handleAddTask = () => {
-    if (!taskName.trim() || !assignedTo || !project) return;
-
-    const newTask = {
-      taskName: taskName.trim(),
-      assignedTo,
-      project,
-      status,
-      dueDate
-    };
-
-    axios.post('http://localhost:5000/tasks', newTask)
-      .then(() => {
-        fetchTasks();
-        setTaskName('');
-        setAssignedTo('');
-        setProject('');
-        setStatus('Pending');
-        setDueDate('');
-      })
-      .catch(err => console.error('Error adding task:', err));
+  const handleEditOpen = (task) => {
+    setEditingTask(task);
+    setEditDialogOpen(true);
   };
 
-  const handleDelete = (id) => {
-    axios.delete(`http://localhost:5000/tasks/${id}`)
-      .then(() => setTasks(tasks.filter(t => t._id !== id)))
-      .catch(err => console.error('Error deleting task:', err));
+  const handleEditChange = (field, value) => {
+    setEditingTask((prev) => ({ ...prev, [field]: value }));
   };
+
+  const handleEditSave = async () => {
+    try {
+      await axios.put(h`ttp://localhost:5000/tasks/${editingTask._id}`, editingTask);
+      setEditDialogOpen(false);
+      setEditingTask(null);
+      fetchTasks();
+    } catch (error) {
+      console.error('Error updating task:', error);
+    }
+  };
+
+  const getProjectName = (projectId) => {
+    const project = projects.find((proj) => proj._id === projectId);
+    return project ? project.projectName : 'Unknown Project';
+  };
+
+  const completedCount = tasks.filter((task) => task.status === 'Completed').length;
 
   return (
-    <Box sx={{ my: 4 }}>
-      <Typography variant="h6" gutterBottom>📝 Tasks</Typography>
+    <Box p={4} sx={{ backgroundColor: '#f4f6f8', minHeight: '100vh' }}>
+      <Typography variant="h4" fontWeight="bold" mb={3}>
+        {user.role === 'Team Member' ? 'Your Tasks' : 'All Tasks'} ({completedCount} of {tasks.length} Completed)
+      </Typography>
 
-      {/* Task Form */}
-      <Stack direction="row" spacing={2} mb={2} flexWrap="wrap">
-        <TextField label="Task Name" value={taskName} onChange={(e) => setTaskName(e.target.value)} />
-
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Assign To</InputLabel>
-          <Select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} label="Assign To">
-            {team.map(member => (
-              <MenuItem key={member._id} value={member.name}>{member.name}</MenuItem>
+      {user.role === 'Admin' && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { sm: '1fr 1fr', md: 'repeat(3, 1fr)' },
+            gap: 2,
+            mb: 4,
+            backgroundColor: '#fff',
+            p: 3,
+            borderRadius: 2,
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          }}
+        >
+          <TextField
+            label="Task Name"
+            value={newTask.taskName}
+            onChange={(e) => setNewTask((prev) => ({ ...prev, taskName: e.target.value }))}
+          />
+          <TextField
+            select
+            label="Assign To"
+            value={newTask.assignedTo}
+            onChange={(e) => setNewTask((prev) => ({ ...prev, assignedTo: e.target.value }))}
+          >
+            {teamMembers.map((member) => (
+              <MenuItem key={member._id} value={member.name}>
+                {member.name}
+              </MenuItem>
             ))}
-          </Select>
-        </FormControl>
-
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Project</InputLabel>
-          <Select value={project} onChange={(e) => setProject(e.target.value)} label="Project">
-            {projects.map(p => (
-              <MenuItem key={p._id} value={p.projectName}>{p.projectName}</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Select Project"
+            value={newTask.projectId}
+            onChange={(e) => setNewTask((prev) => ({ ...prev, projectId: e.target.value }))}
+          >
+            {projects.map((project) => (
+              <MenuItem key={project._id} value={project._id}>
+                {project.projectName}
+              </MenuItem>
             ))}
-          </Select>
-        </FormControl>
-
-        <FormControl sx={{ minWidth: 150 }}>
-          <InputLabel>Status</InputLabel>
-          <Select value={status} onChange={(e) => setStatus(e.target.value)} label="Status">
-            <MenuItem value="Pending">Pending</MenuItem>
+          </TextField>
+          <TextField
+            type="date"
+            label="Due Date"
+            InputLabelProps={{ shrink: true }}
+            value={newTask.dueDate}
+            onChange={(e) => setNewTask((prev) => ({ ...prev, dueDate: e.target.value }))}
+          />
+          <TextField
+            select
+            label="Status"
+            value={newTask.status}
+            onChange={(e) => setNewTask((prev) => ({ ...prev, status: e.target.value }))}
+          >
+            <MenuItem value="To do">To do</MenuItem>
             <MenuItem value="In Progress">In Progress</MenuItem>
             <MenuItem value="Completed">Completed</MenuItem>
-          </Select>
-        </FormControl>
+          </TextField>
+          <Button variant="contained" onClick={handleAddTask}>
+            Add Task
+          </Button>
+        </Box>
+      )}
 
-        <TextField type="date" label="Due Date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} InputLabelProps={{ shrink: true }} />
-
-        <Button variant="contained" onClick={handleAddTask}>Add Task</Button>
-      </Stack>
-
-      {/* Task List */}
-      <Stack spacing={2}>
-        {tasks.map(task => (
-          <Card key={task._id}>
-            <CardContent>
-              <Typography variant="subtitle1">{task.taskName}</Typography>
-              <Typography>Assigned To: {task.assignedTo}</Typography>
-              <Typography>Project: {task.project}</Typography>
-              <Typography>Status: {task.status}</Typography>
-              <Typography>
-                Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'N/A'}
-              </Typography>
-              <Button variant="contained" color="error" onClick={() => handleDelete(task._id)}>Delete</Button>
-            </CardContent>
-          </Card>
+      <Grid container spacing={3}>
+        {tasks.map((task) => (
+          <Grid item xs={12} sm={6} md={4} key={task._id}>
+            <Card
+              sx={{
+                height: '100%',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                borderLeft: task.status === 'Completed' ? '6px solid green' : '6px solid orange',
+                backgroundColor: '#fff',
+                boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+              }}
+            >
+              <CardContent>
+                <Box display="flex" alignItems="center" mb={1}>
+                  <Checkbox
+                    checked={task.status === 'Completed'}
+                    onChange={() => handleToggleComplete(task._id, task.status)}
+                  />
+                  <Typography variant="h6" sx={{ textDecoration: task.status === 'Completed' ? 'line-through' : 'none' }}>
+                    {task.taskName}
+                  </Typography>
+                </Box>
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  Assigned to: {task.assignedTo}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Project: {getProjectName(task.projectId)}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Due: {new Date(task.dueDate).toLocaleDateString()}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Status: {task.status}
+                </Typography>
+              </CardContent>
+              {user.role === 'Admin' && (
+                <CardActions>
+                  <Tooltip title="Edit Task">
+                    <IconButton color="primary" onClick={() => handleEditOpen(task)}>
+                      <EditIcon />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Delete Task">
+                    <IconButton color="error" onClick={() => handleDelete(task._id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </Tooltip>
+                </CardActions>
+              )}
+            </Card>
+          </Grid>
         ))}
-      </Stack>
+      </Grid>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Task</DialogTitle>
+        {editingTask && (
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+            <TextField
+              label="Task Name"
+              value={editingTask.taskName}
+              onChange={(e) => handleEditChange('taskName', e.target.value)}
+            />
+            <TextField
+              select
+              label="Assign To"
+              value={editingTask.assignedTo}
+              onChange={(e) => handleEditChange('assignedTo', e.target.value)}
+            >
+              {teamMembers.map((member) => (
+                <MenuItem key={member._id} value={member.name}>
+                  {member.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Project"
+              value={editingTask.projectId}
+              onChange={(e) => handleEditChange('projectId', e.target.value)}
+            >
+              {projects.map((proj) => (
+                <MenuItem key={proj._id} value={proj._id}>
+                  {proj.projectName}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              type="date"
+              label="Due Date"
+              InputLabelProps={{ shrink: true }}
+              value={editingTask.dueDate}
+              onChange={(e) => handleEditChange('dueDate', e.target.value)}
+            />
+            <TextField
+              select
+              label="Status"
+              value={editingTask.status}
+              onChange={(e) => handleEditChange('status', e.target.value)}
+            >
+              <MenuItem value="To do">To do</MenuItem>
+              <MenuItem value="In Progress">In Progress</MenuItem>
+              <MenuItem value="Completed">Completed</MenuItem>
+            </TextField>
+          </DialogContent>
+        )}
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleEditSave}>
+            Save Changes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

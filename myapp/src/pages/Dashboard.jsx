@@ -1,5 +1,4 @@
-// src/pages/Dashboard.jsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box,
   Typography,
@@ -7,78 +6,157 @@ import {
   Card,
   CardContent,
   LinearProgress,
+  Grid,
+  Skeleton,
+  Paper,
 } from '@mui/material';
+import axios from 'axios';
 
 const Dashboard = ({ user }) => {
-  // 📝 Dummy Task Data
-  const allTasks = [
-    { id: 1, project: 'Website Redesign', assignee: 'Juliet', status: 'Done' },
-    { id: 2, project: 'Website Redesign', assignee: 'Juliet', status: 'In Progress' },
-    { id: 3, project: 'Mobile App', assignee: 'Bob', status: 'To Do' },
-    { id: 4, project: 'Mobile App', assignee: 'Bob', status: 'Done' },
-    { id: 5, project: 'Mobile App', assignee: 'Bob', status: 'Done' },
-  ];
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/tasks');
+      const filtered =
+        user.role === 'Team Member'
+          ? res.data.filter(
+              (task) =>
+                task.assignedTo?.toLowerCase().trim() ===
+                user.name?.toLowerCase().trim()
+            )
+          : res.data;
+      setTasks(filtered);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, [user]);
+
+  const LoadingSkeleton = () => (
+    <Grid container spacing={2}>
+      {[1, 2, 3].map((i) => (
+        <Grid item xs={12} md={6} key={i}>
+          <Skeleton variant="rectangular" height={100} animation="wave" />
+        </Grid>
+      ))}
+    </Grid>
+  );
 
   return (
-    <Box sx={{ padding: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        👋 Welcome, {user.name} ({user.role})
+    <Box sx={{ p: { xs: 2, md: 4 } }}>
+      <Typography variant="h4" fontWeight="bold" gutterBottom>
+        👋 Welcome, {user.name} <Typography component="span" color="text.secondary">({user.role})</Typography>
       </Typography>
 
-      <Divider sx={{ my: 2 }} />
+      <Divider sx={{ my: 3 }} />
 
-      {/* 👤 Team Member View */}
-      {user.role === 'Team Member' ? (
+      {loading ? (
+        <LoadingSkeleton />
+      ) : user.role === 'Team Member' ? (
         (() => {
-          const myTasks = allTasks.filter(task => task.assignee === user.name);
-          const completed = myTasks.filter(task => task.status === 'Done').length;
-          const progress = myTasks.length ? (completed / myTasks.length) * 100 : 0;
+          const completed = tasks.filter((task) => task.status === 'Completed').length;
+          const progress = tasks.length ? (completed / tasks.length) * 100 : 0;
 
           return (
-            <Card sx={{ maxWidth: 600 }}>
-              <CardContent>
-                <Typography variant="h6">📋 My Task Summary</Typography>
-                <Typography variant="body2">
-                  {completed} of {myTasks.length} tasks completed
-                </Typography>
-                <LinearProgress
-                  variant="determinate"
-                  value={progress}
-                  sx={{ height: 10, borderRadius: 5, mt: 1 }}
-                />
-              </CardContent>
-            </Card>
+            <Paper
+              elevation={4}
+              sx={{
+                maxWidth: 600,
+                borderRadius: 3,
+                p: 3,
+                backgroundColor: '#f9fafc',
+              }}
+            >
+              <Typography variant="h6" color="primary" gutterBottom>
+                📋 My Task Summary
+              </Typography>
+
+              <Typography variant="body2" sx={{ mb: 1 }}>
+                You’ve completed <strong>{completed}</strong> of <strong>{tasks.length}</strong> assigned tasks
+              </Typography>
+
+              <LinearProgress
+                variant="determinate"
+                value={progress}
+                sx={{ height: 12, borderRadius: 6 }}
+              />
+
+              <Typography variant="caption" display="block" align="right" sx={{ mt: 1 }}>
+                {progress.toFixed(0)}% completed
+              </Typography>
+            </Paper>
           );
         })()
       ) : (
-        // 🧑‍💼 Admin View
         (() => {
-          const projects = [...new Set(allTasks.map(task => task.project))];
+          const projectMap = {};
+          tasks.forEach((task) => {
+            const project = task.project || 'Unnamed Project';
+            if (!projectMap[project]) {
+              projectMap[project] = [];
+            }
+            projectMap[project].push(task);
+          });
 
           return (
             <>
-              <Typography variant="h6" gutterBottom>📊 Project Overview</Typography>
-              {projects.map(project => {
-                const projectTasks = allTasks.filter(task => task.project === project);
-                const completed = projectTasks.filter(task => task.status === 'Done').length;
-                const progress = projectTasks.length ? (completed / projectTasks.length) * 100 : 0;
+              <Typography variant="h6" color="primary" gutterBottom>
+                📊 Project Progress Overview
+              </Typography>
 
-                return (
-                  <Card key={project} sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Typography variant="h6">{project}</Typography>
-                      <Typography variant="body2">
-                        {completed} of {projectTasks.length} tasks completed
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={progress}
-                        sx={{ height: 10, borderRadius: 5, mt: 1 }}
-                      />
-                    </CardContent>
-                  </Card>
-                );
-              })}
+              <Grid container spacing={3}>
+                {Object.entries(projectMap).map(([project, projectTasks]) => {
+                  const completed = projectTasks.filter((task) => task.status === 'Completed').length;
+                  const progress = projectTasks.length
+                    ? (completed / projectTasks.length) * 100
+                    : 0;
+
+                  return (
+                    <Grid item xs={12} md={6} key={project}>
+                      <Card
+                        elevation={3}
+                        sx={{
+                          borderRadius: 3,
+                          backgroundColor: '#fff',
+                          boxShadow: '0 3px 8px rgba(0,0,0,0.08)',
+                        }}
+                      >
+                        <CardContent>
+                          <Typography variant="h6" sx={{ mb: 1 }}>
+                            {project}
+                          </Typography>
+
+                          <Typography variant="body2" sx={{ mb: 1 }}>
+                            {completed} of {projectTasks.length} tasks completed
+                          </Typography>
+
+                          <LinearProgress
+                            variant="determinate"
+                            value={progress}
+                            sx={{ height: 10, borderRadius: 5 }}
+                          />
+
+                          <Typography
+                            variant="caption"
+                            display="block"
+                            align="right"
+                            sx={{ mt: 1 }}
+                          >
+                            {progress.toFixed(0)}% done
+                          </Typography>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  );
+                })}
+              </Grid>
             </>
           );
         })()
