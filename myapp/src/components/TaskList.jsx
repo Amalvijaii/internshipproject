@@ -1,3 +1,4 @@
+// TaskList.jsx
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
@@ -138,7 +139,7 @@ const TaskList = ({ user }) => {
 
   const handleEditSave = async () => {
     try {
-      await axios.put(h`ttp://localhost:5000/tasks/${editingTask._id}`, editingTask);
+      await axios.put(`http://localhost:5000/tasks/${editingTask._id}`, editingTask);
       setEditDialogOpen(false);
       setEditingTask(null);
       fetchTasks();
@@ -230,7 +231,7 @@ const TaskList = ({ user }) => {
           <Grid item xs={12} sm={6} md={4} key={task._id}>
             <Card
               sx={{
-                height: '100%',
+                height: 240,
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
@@ -239,7 +240,7 @@ const TaskList = ({ user }) => {
                 boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
               }}
             >
-              <CardContent>
+              <CardContent sx={{ flexGrow: 1 }}>
                 <Box display="flex" alignItems="center" mb={1}>
                   <Checkbox
                     checked={task.status === 'Completed'}
@@ -263,7 +264,7 @@ const TaskList = ({ user }) => {
                 </Typography>
               </CardContent>
               {user.role === 'Admin' && (
-                <CardActions>
+                <CardActions sx={{ justifyContent: 'flex-end' }}>
                   <Tooltip title="Edit Task">
                     <IconButton color="primary" onClick={() => handleEditOpen(task)}>
                       <EditIcon />
